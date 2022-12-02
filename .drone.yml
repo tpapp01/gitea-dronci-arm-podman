@@ -1,0 +1,17 @@
+kind: pipeline
+name: notes
+type: docker
+
+steps:
+  - name: test-container-build
+    image: plugins/docker
+    pull: if-not-exists
+    settings:
+      dockerfile: /Dockerfile
+      registry: registry.domain.local
+      username:
+        from_secret: registry-user
+      password:
+        from_secret: registry-passwd
+      repo: registry.doamin.local/test/test-container
+      tag: latest

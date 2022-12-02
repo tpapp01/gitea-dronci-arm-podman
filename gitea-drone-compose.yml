@@ -1,0 +1,80 @@
+version: "3.7"
+
+volumes:
+  gitea-data:
+    driver: local
+    external: true
+    driver_opts:
+      o: bind
+      device: /opt/container-volumes/gitea/data
+  gitea-config:
+    driver: local
+    external: true
+    driver_opts:
+      o: bind
+      type: none
+      device: /opt/container-volumes/gitea/config
+  drone-data:
+  driver: local
+  external: true
+  driver_opts:
+    o: bind
+    type: none
+    device: /opt/container-volumes/drone/data
+
+
+services:
+ gitea:
+    image: docker.io/gitea/1.16.8-linux-arm64-rootless
+    container_name: gitea
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - USER=git
+      - DOMAIN=gitea.home.lan
+      - HTTP_PORT=3000
+      - ROOT_URL=
+      - SSH_PORT=2222
+      - SSH_LISTEN_PORT=22
+    restart: always
+    volumes:
+      - gitea-data:/data
+      - gitea-config:/etc/gitea
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "3000:3000"
+      - "2223:2222"
+
+ drone-server:
+    image: docker.io/drone/drone:2.12-linux-arm64
+    container_name: drone-server
+    environment:
+      - DRONE_GITEA_SERVER=https://gitea.home.lan
+      - DRONE_GITEA_CLIENT_ID=
+      - DRONE_GITEA_CLIENT_SECRET=
+      - DRONE_RPC_SECRET=FYnKKJiMblZCGrSCOn6aul9ejDp82JFAg99p
+      - DRONE_SERVER_HOST=drone.home.lan
+      - DRONE_SERVER_PROTO=https
+    restart: always
+    volumes:
+      - drone-data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - "gitea"
+
+ drone-runner:
+    image: docker.io/drone-runner-docker:1.8.2-linux-arm64
+    container_name: drone-runner
+    environment:
+      - DRONE_RPC_PROTO=https
+      - DRONE_RPC_HOST=drone.home.lan
+      - DRONE_RPC_SECRET=
+      - DRONE_RUNNER_CAPACITY=4
+      - DRONE_RUNNER_NAME=runner-1
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - "drone-server"
